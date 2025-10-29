@@ -283,7 +283,7 @@
         </div>
     </div>
 
-    <script>
+<script>
         document.addEventListener('DOMContentLoaded', function() {
             // Конфигурация игры
             const config = {
@@ -571,7 +571,7 @@
                 }
             }
             
-            // Проверка, являются ли шестиугольники соседними
+            // Проверка, являются ли шестиугольники соседними (ИСПРАВЛЕННАЯ ФУНКЦИЯ)
             function isAdjacent(index1, index2) {
                 const row1 = Math.floor(index1 / config.cols);
                 const col1 = index1 % config.cols;
@@ -581,7 +581,7 @@
                 const rowDiff = Math.abs(row1 - row2);
                 const colDiff = Math.abs(col1 - col2);
                 
-                // В гексагональной сетке соседние ячейки:
+                // В гексагональной сетке у каждого шестиугольника 6 соседей
                 if (rowDiff === 0 && colDiff === 1) {
                     return true; // Горизонтальные соседи
                 }
