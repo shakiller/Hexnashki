@@ -283,7 +283,7 @@
         </div>
     </div>
 
-<script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Конфигурация игры
             const config = {
@@ -571,40 +571,40 @@
                 }
             }
             
-            // Проверка, являются ли шестиугольники соседними (ИСПРАВЛЕННАЯ ФУНКЦИЯ)
-// ПРОВЕРКА СОСЕДСТВА - ПРАВИЛЬНАЯ ВЕРСИЯ ДЛЯ ГЕКСАГОНАЛЬНОЙ СЕТКИ
-function isAdjacent(index1, index2) {
-    const row1 = Math.floor(index1 / config.cols);
-    const col1 = index1 % config.cols;
-    const row2 = Math.floor(index2 / config.cols);
-    const col2 = index2 % config.cols;
-    
-    const rowDiff = Math.abs(row1 - row2);
-    const colDiff = Math.abs(col1 - col2);
-    
-    // В гексагональной сетке у каждой клетки 6 соседей:
-    // 1. Слева и справа (горизонтальные)
-    if (rowDiff === 0 && colDiff === 1) {
-        return true;
-    }
-    
-    // 2. Диагональные соседи (зависят от четности строки)
-    if (rowDiff === 1) {
-        if (row1 % 2 === 0) {
-            // Четная строка: соседи сверху-справа, сверху-слева, снизу-справа, снизу-слева
-            if (col1 === col2 || col1 === col2 + 1) {
-                return true;
+            // ПРОВЕРКА СОСЕДСТВА - ИСПРАВЛЕННАЯ ВЕРСИЯ
+            function isAdjacent(index1, index2) {
+                const row1 = Math.floor(index1 / config.cols);
+                const col1 = index1 % config.cols;
+                const row2 = Math.floor(index2 / config.cols);
+                const col2 = index2 % config.cols;
+                
+                const rowDiff = Math.abs(row1 - row2);
+                const colDiff = Math.abs(col1 - col2);
+                
+                // В гексагональной сетке у каждого шестиугольника 6 возможных соседей
+                
+                // 1. Горизонтальные соседи (слева и справа)
+                if (rowDiff === 0 && colDiff === 1) {
+                    return true;
+                }
+                
+                // 2. Диагональные соседи (зависят от четности строки)
+                if (rowDiff === 1) {
+                    if (row1 % 2 === 0) {
+                        // Четная строка: соседи сверху-справа и снизу-справа
+                        if (col1 === col2 || col1 === col2 + 1) {
+                            return true;
+                        }
+                    } else {
+                        // Нечетная строка: соседи сверху-слева и снизу-слева
+                        if (col1 === col2 || col1 === col2 - 1) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
             }
-        } else {
-            // Нечетная строка: соседи сверху-справа, сверху-слева, снизу-справа, снизу-слева
-            if (col1 === col2 || col1 === col2 - 1) {
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
             
             // Обмен шестиугольниками
             function swapHexes(index1, index2) {
