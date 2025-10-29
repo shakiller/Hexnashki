@@ -572,36 +572,39 @@
             }
             
             // Проверка, являются ли шестиугольники соседними (ИСПРАВЛЕННАЯ ФУНКЦИЯ)
-            function isAdjacent(index1, index2) {
-                const row1 = Math.floor(index1 / config.cols);
-                const col1 = index1 % config.cols;
-                const row2 = Math.floor(index2 / config.cols);
-                const col2 = index2 % config.cols;
-                
-                const rowDiff = Math.abs(row1 - row2);
-                const colDiff = Math.abs(col1 - col2);
-                
-                // В гексагональной сетке у каждого шестиугольника 6 соседей
-                if (rowDiff === 0 && colDiff === 1) {
-                    return true; // Горизонтальные соседи
-                }
-                
-                if (rowDiff === 1) {
-                    if (row1 % 2 === 0) {
-                        // Четная строка: соседи справа-внизу/вверху и слева-внизу/вверху
-                        if (col1 === col2 || col1 === col2 - 1) {
-                            return true;
-                        }
-                    } else {
-                        // Нечетная строка: соседи слева-внизу/вверху и справа-внизу/вверху
-                        if (col1 === col2 || col1 === col2 + 1) {
-                            return true;
-                        }
-                    }
-                }
-                
-                return false;
+// ПРОВЕРКА СОСЕДСТВА - ПРАВИЛЬНАЯ ВЕРСИЯ ДЛЯ ГЕКСАГОНАЛЬНОЙ СЕТКИ
+function isAdjacent(index1, index2) {
+    const row1 = Math.floor(index1 / config.cols);
+    const col1 = index1 % config.cols;
+    const row2 = Math.floor(index2 / config.cols);
+    const col2 = index2 % config.cols;
+    
+    const rowDiff = Math.abs(row1 - row2);
+    const colDiff = Math.abs(col1 - col2);
+    
+    // В гексагональной сетке у каждой клетки 6 соседей:
+    // 1. Слева и справа (горизонтальные)
+    if (rowDiff === 0 && colDiff === 1) {
+        return true;
+    }
+    
+    // 2. Диагональные соседи (зависят от четности строки)
+    if (rowDiff === 1) {
+        if (row1 % 2 === 0) {
+            // Четная строка: соседи сверху-справа, сверху-слева, снизу-справа, снизу-слева
+            if (col1 === col2 || col1 === col2 + 1) {
+                return true;
             }
+        } else {
+            // Нечетная строка: соседи сверху-справа, сверху-слева, снизу-справа, снизу-слева
+            if (col1 === col2 || col1 === col2 - 1) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
             
             // Обмен шестиугольниками
             function swapHexes(index1, index2) {
