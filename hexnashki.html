@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шестигранные пятнашки</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        h1 {
+            margin: 15px 0;
+            text-align: center;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        button, .file-upload-wrapper {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button:hover, .file-upload-wrapper:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #image-upload {
+            display: none;
+        }
+        
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        #game-board {
+            position: relative;
+            width: 90vmin;
+            height: 90vmin;
+            max-width: 500px;
+            max-height: 500px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .hex {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .hex:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        
+        .hex.empty {
+            background: rgba(255, 255, 255, 0.05) !important;
+            cursor: default;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+        }
+        
+        .status {
+            margin: 15px 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            min-height: 1.5em;
+        }
+        
+        .instructions {
+            margin: 15px 0;
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .win-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        
+        .win-message.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .win-content {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            color: white;
+        }
+        
+        .win-content h2 {
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+        
+        .win-content p {
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+        }
+        
+        .win-content button {
+            background: white;
+            color: #6a11cb;
+            font-weight: bold;
+            padding: 12px 30px;
+        }
+        
+        /* Адаптация для мобильных устройств */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button, .file-upload-wrapper {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            #game-board {
+                width: 95vmin;
+                height: 95vmin;
+            }
+            
+            .win-content {
+                padding: 25px;
+            }
+            
+            .win-content h2 {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .controls {
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Шестигранные пятнашки</h1>
+        
+        <div class="controls">
+            <label class="file-upload-wrapper">
+                <span>Выбрать изображение</span>
+                <input type="file" id="image-upload" accept="image/*">
+            </label>
+            <button id="shuffle-btn">Перемешать</button>
+            <button id="reset-btn">Сбросить</button>
+        </div>
+        
+        <div class="game-area">
+            <div id="game-board"></div>
+            <div class="status" id="status">Соберите изображение, перемещая шестиугольники</div>
+        </div>
+        
+        <div class="instructions">
+            <p>Загрузите своё изображение или используйте стандартное. Кликайте на шестиугольники рядом с пустым местом, чтобы переместить их. Цель - собрать исходное изображение.</p>
+        </div>
+    </div>
+    
+    <div class="win-message" id="win-message">
+        <div class="win-content">
+            <h2>Поздравляем!</h2>
+            <p id="win-text">Вы собрали головоломку!</p>
+            <button id="close-win">Продолжить</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Конфигурация игры
+            const config = {
+                rows: 4,
+                cols: 4,
+                hexSize: 0 // Будет вычисляться динамически
+            };
+            
+            // Состояние игры
+            const gameState = {
+                board: [],
+                emptyIndex: -1,
+                isSolved: false,
+                moves: 0,
+                imageSrc: null,
+                hexElements: [],
+                originalPositions: [] // Сохраняем исходные позиции для проверки решения
+            };
+            
+            // Элементы DOM
+            const gameBoard = document.getElementById('game-board');
+            const imageUpload = document.getElementById('image-upload');
+            const shuffleBtn = document.getElementById('shuffle-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const statusEl = document.getElementById('status');
+            const winMessage = document.getElementById('win-message');
+            const winText = document.getElementById('win-text');
+            const closeWinBtn = document.getElementById('close-win');
+            
+            // Инициализация игры
+            function initGame() {
+                calculateHexSize();
+                createBoard();
+                if (!gameState.imageSrc) {
+                    loadDefaultImage();
+                }
+                updateStatus();
+                
+                // Обработчик изменения размера окна
+                window.addEventListener('resize', calculateHexSize);
+            }
+            
+            // Расчет размера шестиугольника
+            function calculateHexSize() {
+                const boardWidth = gameBoard.offsetWidth;
+                const boardHeight = gameBoard.offsetHeight;
+                
+                // Рассчитываем размер шестиугольника так, чтобы сетка поместилась
+                // Учитываем особенности гексагональной сетки
+                const hexWidth = boardWidth / (config.cols * 1.5 + 0.5);
+                const hexHeight = boardHeight / (config.rows * 0.75 + 0.25);
+                
+                config.hexSize = Math.min(hexWidth, hexHeight) * 0.9;
+                
+                // Перерисовываем доску, если она уже создана
+                if (gameState.hexElements.length > 0) {
+                    positionAllHexes();
+                    if (gameState.imageSrc) {
+                        applyImageToHexes();
+                    }
+                }
+            }
+            
+            // Создание игрового поля
+            function createBoard() {
+                gameBoard.innerHTML = '';
+                gameState.board = [];
+                gameState.hexElements = [];
+                gameState.originalPositions = [];
+                
+                // Создаем массив индексов
+                const totalHexes = config.rows * config.cols;
+                for (let i = 0; i < totalHexes - 1; i++) {
+                    gameState.board.push(i);
+                    gameState.originalPositions.push(i);
+                }
+                gameState.board.push(-1); // Пустая ячейка
+                gameState.originalPositions.push(-1);
+                gameState.emptyIndex = totalHexes - 1;
+                
+                // Создаем DOM-элементы для шестиугольников
+                for (let i = 0; i < totalHexes; i++) {
+                    const hex = document.createElement('div');
+                    hex.className = 'hex';
+                    hex.dataset.index = i;
+                    
+                    if (i === gameState.emptyIndex) {
+                        hex.classList.add('empty');
+                    }
+                    
+                    // Обработчик клика
+                    hex.addEventListener('click', () => handleHexClick(i));
+                    
+                    gameBoard.appendChild(hex);
+                    gameState.hexElements.push(hex);
+                    
+                    // Позиционируем шестиугольник
+                    positionHex(hex, i);
+                }
+            }
+            
+            // Позиционирование шестиугольника на доске
+            function positionHex(hex, index) {
+                const row = Math.floor(index / config.cols);
+                const col = index % config.cols;
+                
+                // Смещение четных строк для создания гексагональной сетки
+                const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
+                
+                const x = col * config.hexSize * 1.5 + offsetX;
+                const y = row * config.hexSize * 0.866;
+                
+                // Центрируем сетку на доске
+                const boardWidth = gameBoard.offsetWidth;
+                const boardHeight = gameBoard.offsetHeight;
+                const gridWidth = config.cols * config.hexSize * 1.5 + config.hexSize * 0.866;
+                const gridHeight = config.rows * config.hexSize * 0.866 + config.hexSize * 0.5;
+                
+                const offsetBoardX = (boardWidth - gridWidth) / 2;
+                const offsetBoardY = (boardHeight - gridHeight) / 2;
+                
+                hex.style.left = `${offsetBoardX + x}px`;
+                hex.style.top = `${offsetBoardY + y}px`;
+                
+                // Устанавливаем размеры шестиугольника
+                const size = config.hexSize;
+                hex.style.width = `${size * 1.732}px`;
+                hex.style.height = `${size * 2}px`;
+                
+                // Создаем шестиугольную форму с помощью clip-path
+                const points = [
+                    `${size * 0.866}px 0px`,
+                    `${size * 1.732}px ${size * 0.5}px`,
+                    `${size * 1.732}px ${size * 1.5}px`,
+                    `${size * 0.866}px ${size * 2}px`,
+                    `0px ${size * 1.5}px`,
+                    `0px ${size * 0.5}px`
+                ].join(', ');
+                
+                hex.style.clipPath = `polygon(${points})`;
+            }
+            
+            // Позиционирование всех шестиугольников
+            function positionAllHexes() {
+                gameState.hexElements.forEach((hex, index) => {
+                    positionHex(hex, index);
+                });
+            }
+            
+            // Загрузка стандартного изображения
+            function loadDefaultImage() {
+                // Создаем стандартное изображение с градиентом
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 800;
+                const ctx = canvas.getContext('2d');
+                
+                // Создаем градиент
+                const gradient = ctx.createLinearGradient(0, 0, 800, 800);
+                gradient.addColorStop(0, '#ff7e5f');
+                gradient.addColorStop(0.5, '#feb47b');
+                gradient.addColorStop(1, '#86a8e7');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 800, 800);
+                
+                // Добавляем текст
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 60px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Гексагональные', 400, 350);
+                ctx.fillText('пятнашки', 400, 430);
+                
+                // Добавляем узор для лучшей видимости частей
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        ctx.beginPath();
+                        ctx.arc(100 + i * 100, 100 + j * 100, 20, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+                
+                gameState.imageSrc = canvas.toDataURL();
+                applyImageToHexes();
+            }
+            
+            // Применение изображения к шестиугольникам
+            function applyImageToHexes() {
+                const hexes = document.querySelectorAll('.hex:not(.empty)');
+                const totalHexes = config.rows * config.cols;
+                
+                // Создаем изображение для получения данных
+                const img = new Image();
+                img.src = gameState.imageSrc;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Для каждого шестиугольника вырезаем соответствующую часть изображения
+                    hexes.forEach(hex => {
+                        const index = parseInt(hex.dataset.index);
+                        const row = Math.floor(index / config.cols);
+                        const col = index % config.cols;
+                        
+                        // Создаем canvas для части изображения
+                        const hexCanvas = document.createElement('canvas');
+                        const hexCtx = hexCanvas.getContext('2d');
+                        
+                        // Устанавливаем размеры
+                        const hexWidth = config.hexSize * 1.732;
+                        const hexHeight = config.hexSize * 2;
+                        hexCanvas.width = hexWidth;
+                        hexCanvas.height = hexHeight;
+                        
+                        // Создаем шестиугольный путь
+                        hexCtx.beginPath();
+                        const points = [
+                            {x: hexWidth/2, y: 0},
+                            {x: hexWidth, y: hexHeight/4},
+                            {x: hexWidth, y: 3*hexHeight/4},
+                            {x: hexWidth/2, y: hexHeight},
+                            {x: 0, y: 3*hexHeight/4},
+                            {x: 0, y: hexHeight/4}
+                        ];
+                        
+                        hexCtx.moveTo(points[0].x, points[0].y);
+                        for (let i = 1; i < points.length; i++) {
+                            hexCtx.lineTo(points[i].x, points[i].y);
+                        }
+                        hexCtx.closePath();
+                        hexCtx.clip();
+                        
+                        // Вычисляем позицию на исходном изображении
+                        const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
+                        const srcX = col * config.hexSize * 1.5 + offsetX;
+                        const srcY = row * config.hexSize * 0.866;
+                        
+                        // Масштабируем координаты для исходного изображения
+                        const scaleX = img.width / (config.cols * config.hexSize * 1.5 + config.hexSize * 0.866);
+                        const scaleY = img.height / (config.rows * config.hexSize * 0.866 + config.hexSize * 0.5);
+                        
+                        const scaledSrcX = srcX * scaleX;
+                        const scaledSrcY = srcY * scaleY;
+                        const scaledHexWidth = hexWidth * scaleX;
+                        const scaledHexHeight = hexHeight * scaleY;
+                        
+                        // Рисуем часть изображения
+                        hexCtx.drawImage(
+                            canvas, 
+                            scaledSrcX, scaledSrcY, 
+                            scaledHexWidth, scaledHexHeight,
+                            0, 0,
+                            hexWidth, hexHeight
+                        );
+                        
+                        // Устанавливаем как фон
+                        hex.style.backgroundImage = `url(${hexCanvas.toDataURL()})`;
+                    });
+                };
+            }
+            
+            // Обработка клика по шестиугольнику
+            function handleHexClick(clickedIndex) {
+                if (gameState.isSolved) return;
+                
+                // Проверяем, является ли шестиугольник соседним с пустым
+                if (isAdjacent(clickedIndex, gameState.emptyIndex)) {
+                    // Меняем местами
+                    swapHexes(clickedIndex, gameState.emptyIndex);
+                    gameState.moves++;
+                    updateStatus();
+                    
+                    // Проверяем, решена ли головоломка
+                    if (checkSolution()) {
+                        gameState.isSolved = true;
+                        showWinMessage();
+                    }
+                }
+            }
+            
+            // Проверка, являются ли шестиугольники соседними
+            function isAdjacent(index1, index2) {
+                const row1 = Math.floor(index1 / config.cols);
+                const col1 = index1 % config.cols;
+                const row2 = Math.floor(index2 / config.cols);
+                const col2 = index2 % config.cols;
+                
+                const rowDiff = Math.abs(row1 - row2);
+                const colDiff = Math.abs(col1 - col2);
+                
+                // В гексагональной сетке соседние ячейки:
+                if (rowDiff === 0 && colDiff === 1) {
+                    return true; // Горизонтальные соседи
+                }
+                
+                if (rowDiff === 1) {
+                    if (row1 % 2 === 0) {
+                        // Четная строка: соседи справа-внизу/вверху и слева-внизу/вверху
+                        if (col1 === col2 || col1 === col2 - 1) {
+                            return true;
+                        }
+                    } else {
+                        // Нечетная строка: соседи слева-внизу/вверху и справа-внизу/вверху
+                        if (col1 === col2 || col1 === col2 + 1) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Обмен шестиугольниками
+            function swapHexes(index1, index2) {
+                // Обновляем состояние игры
+                [gameState.board[index1], gameState.board[index2]] = [gameState.board[index2], gameState.board[index1]];
+                
+                // Обновляем пустой индекс
+                if (gameState.board[index1] === -1) {
+                    gameState.emptyIndex = index1;
+                } else {
+                    gameState.emptyIndex = index2;
+                }
+                
+                // Обновляем DOM
+                const hex1 = gameState.hexElements[index1];
+                const hex2 = gameState.hexElements[index2];
+                
+                // Меняем классы empty
+                hex1.classList.toggle('empty');
+                hex2.classList.toggle('empty');
+                
+                // Меняем фоновые изображения
+                const bg1 = hex1.style.backgroundImage;
+                const bg2 = hex2.style.backgroundImage;
+                
+                hex1.style.backgroundImage = bg2;
+                hex2.style.backgroundImage = bg1;
+            }
+            
+            // Проверка решения
+            function checkSolution() {
+                for (let i = 0; i < gameState.board.length - 1; i++) {
+                    if (gameState.board[i] !== gameState.originalPositions[i]) {
+                        return false;
+                    }
+                }
+                return gameState.board[gameState.board.length - 1] === -1;
+            }
+            
+            // Обновление статуса игры
+            function updateStatus() {
+                statusEl.textContent = `Ходы: ${gameState.moves}`;
+                if (gameState.isSolved) {
+                    statusEl.textContent = `Поздравляем! Вы решили головоломку за ${gameState.moves} ходов!`;
+                }
+            }
+            
+            // Показать сообщение о победе
+            function showWinMessage() {
+                winText.textContent = `Вы собрали головоломку за ${gameState.moves} ходов!`;
+                winMessage.classList.add('show');
+            }
+            
+            // Перемешивание головоломки
+            function shufflePuzzle() {
+                gameState.isSolved = false;
+                gameState.moves = 0;
+                
+                // Простой алгоритм перемешивания - делаем много случайных ходов
+                const shuffleMoves = 200;
+                let emptyIndex = gameState.emptyIndex;
+                
+                for (let i = 0; i < shuffleMoves; i++) {
+                    // Находим всех соседей пустой ячейки
+                    const neighbors = [];
+                    for (let j = 0; j < gameState.board.length; j++) {
+                        if (j !== emptyIndex && isAdjacent(j, emptyIndex)) {
+                            neighbors.push(j);
+                        }
+                    }
+                    
+                    // Выбираем случайного соседа
+                    const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    
+                    // Меняем местами
+                    swapHexes(randomNeighbor, emptyIndex);
+                    emptyIndex = randomNeighbor;
+                }
+                
+                updateStatus();
+            }
+            
+            // Сброс игры
+            function resetGame() {
+                gameState.isSolved = false;
+                gameState.moves = 0;
+                createBoard();
+                applyImageToHexes();
+                updateStatus();
+            }
+            
+            // Инициализация обработчиков событий
+            function initEventHandlers() {
+                // Обработчик загрузки изображения
+                imageUpload.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            gameState.imageSrc = event.target.result;
+                            resetGame();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Обработчики кнопок
+                shuffleBtn.addEventListener('click', shufflePuzzle);
+                resetBtn.addEventListener('click', resetGame);
+                closeWinBtn.addEventListener('click', function() {
+                    winMessage.classList.remove('show');
+                });
+            }
+            
+            // Запуск игры
+            initEventHandlers();
+            initGame();
+        });
+    </script>
+</body>
+</html>
