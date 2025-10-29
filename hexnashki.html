@@ -323,9 +323,9 @@
                 const boardHeight = gameBoard.offsetHeight;
                 
                 // Рассчитываем размер шестиугольника так, чтобы сетка поместилась
-                // Учитываем особенности гексагональной сетки
-                const hexWidth = boardWidth / (config.cols * 1.5 + 0.5);
-                const hexHeight = boardHeight / (config.rows * 0.75 + 0.25);
+                // Используем правильные коэффициенты для гексагональной сетки
+                const hexWidth = boardWidth / (config.cols + 0.5);
+                const hexHeight = boardHeight / (config.rows * 0.75);
                 
                 config.hexSize = Math.min(hexWidth, hexHeight) * 0.9;
                 
@@ -384,14 +384,15 @@
                 // Смещение четных строк для создания гексагональной сетки
                 const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
                 
-                const x = col * config.hexSize * 1.5 + offsetX;
-                const y = row * config.hexSize * 0.866;
+                // Правильные коэффициенты для гексагональной сетки
+                const x = col * config.hexSize * 1.732 + offsetX;
+                const y = row * config.hexSize * 1.5;
                 
                 // Центрируем сетку на доске
                 const boardWidth = gameBoard.offsetWidth;
                 const boardHeight = gameBoard.offsetHeight;
-                const gridWidth = config.cols * config.hexSize * 1.5 + config.hexSize * 0.866;
-                const gridHeight = config.rows * config.hexSize * 0.866 + config.hexSize * 0.5;
+                const gridWidth = config.cols * config.hexSize * 1.732 + config.hexSize * 0.866;
+                const gridHeight = config.rows * config.hexSize * 1.5 + config.hexSize * 0.5;
                 
                 const offsetBoardX = (boardWidth - gridWidth) / 2;
                 const offsetBoardY = (boardHeight - gridHeight) / 2;
@@ -515,12 +516,12 @@
                         
                         // Вычисляем позицию на исходном изображении
                         const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
-                        const srcX = col * config.hexSize * 1.5 + offsetX;
-                        const srcY = row * config.hexSize * 0.866;
+                        const srcX = col * config.hexSize * 1.732 + offsetX;
+                        const srcY = row * config.hexSize * 1.5;
                         
                         // Масштабируем координаты для исходного изображения
-                        const scaleX = img.width / (config.cols * config.hexSize * 1.5 + config.hexSize * 0.866);
-                        const scaleY = img.height / (config.rows * config.hexSize * 0.866 + config.hexSize * 0.5);
+                        const scaleX = img.width / (config.cols * config.hexSize * 1.732 + config.hexSize * 0.866);
+                        const scaleY = img.height / (config.rows * config.hexSize * 1.5 + config.hexSize * 0.5);
                         
                         const scaledSrcX = srcX * scaleX;
                         const scaledSrcY = srcY * scaleY;
