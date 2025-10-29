@@ -128,6 +128,10 @@
             border: 2px dashed rgba(255, 255, 255, 0.2);
         }
         
+        .hex.hidden {
+            display: none !important;
+        }
+        
         .status {
             margin: 15px 0;
             font-size: 1.2rem;
@@ -285,12 +289,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Конфигурация игры
+            // Конфигурация игры - сетка 5x5 с скрытыми угловыми клетками
             const config = {
-                rows: 4,
-                cols: 4,
+                rows: 5,
+                cols: 5,
                 hexSize: 0 // Будет вычисляться динамически
             };
+            
+            // Определяем, какие клетки должны быть скрыты (угловые)
+            const hiddenCells = [
+                0, 1, 3, 4,           // Первая строка
+                5, 9,                 // Вторая строка
+                15, 19,               // Четвертая строка
+                20, 21, 23, 24        // Пятая строка
+            ];
             
             // Состояние игры
             const gameState = {
@@ -331,7 +343,7 @@
                 const boardWidth = gameBoard.offsetWidth;
                 const boardHeight = gameBoard.offsetHeight;
                 
-                // Уменьшаем базовый размер шестиугольника для лучшего размещения
+                // Рассчитываем размер шестиугольника для сетки 5x5
                 const hexWidth = boardWidth / (config.cols * 1.8);
                 const hexHeight = boardHeight / (config.rows * 1.8);
                 
@@ -356,26 +368,45 @@
                 
                 // Создаем массив индексов
                 const totalHexes = config.rows * config.cols;
-                for (let i = 0; i < totalHexes - 1; i++) {
+                
+                // Находим индексы видимых клеток
+                const visibleCells = [];
+                for (let i = 0; i < totalHexes; i++) {
+                    if (!hiddenCells.includes(i)) {
+                        visibleCells.push(i);
+                    }
+                }
+                
+                // Создаем игровое поле только из видимых клеток
+                for (let i = 0; i < visibleCells.length - 1; i++) {
                     gameState.board.push(i);
                     gameState.originalPositions.push(i);
                 }
                 gameState.board.push(-1); // Пустая ячейка
                 gameState.originalPositions.push(-1);
-                gameState.emptyIndex = totalHexes - 1;
+                gameState.emptyIndex = visibleCells.length - 1;
                 
-                // Создаем DOM-элементы для шестиугольников
+                // Создаем DOM-элементы для всех клеток (25)
                 for (let i = 0; i < totalHexes; i++) {
                     const hex = document.createElement('div');
                     hex.className = 'hex';
                     hex.dataset.index = i;
                     
-                    if (i === gameState.emptyIndex) {
+                    // Скрываем угловые клетки
+                    if (hiddenCells.includes(i)) {
+                        hex.classList.add('hidden');
+                    }
+                    
+                    // Помечаем пустую клетку
+                    const visibleIndex = visibleCells.indexOf(i);
+                    if (visibleIndex === gameState.emptyIndex) {
                         hex.classList.add('empty');
                     }
                     
-                    // Обработчик клика
-                    hex.addEventListener('click', () => handleHexClick(i));
+                    // Обработчик клика (только для видимых клеток)
+                    if (!hiddenCells.includes(i)) {
+                        hex.addEventListener('click', () => handleHexClick(i));
+                    }
                     
                     gameBoard.appendChild(hex);
                     gameState.hexElements.push(hex);
@@ -476,7 +507,7 @@
             
             // Применение изображения к шестиугольникам
             function applyImageToHexes() {
-                const hexes = document.querySelectorAll('.hex:not(.empty)');
+                const hexes = document.querySelectorAll('.hex:not(.empty):not(.hidden)');
                 const totalHexes = config.rows * config.cols;
                 
                 // Создаем изображение для получения данных
@@ -554,7 +585,7 @@
             
             // Обработка клика по шестиугольнику
             function handleHexClick(clickedIndex) {
-                if (gameState.isSolved) return;
+                if (gameState.isSolved || hiddenCells.includes(clickedIndex)) return;
                 
                 // Проверяем, является ли шестиугольник соседним с пустым
                 if (isAdjacent(clickedIndex, gameState.emptyIndex)) {
@@ -671,7 +702,7 @@
                     // Находим всех соседей пустой ячейки
                     const neighbors = [];
                     for (let j = 0; j < gameState.board.length; j++) {
-                        if (j !== emptyIndex && isAdjacent(j, emptyIndex)) {
+                        if (j !== emptyIndex && !hiddenCells.includes(j) && isAdjacent(j, emptyIndex)) {
                             neighbors.push(j);
                         }
                     }
