@@ -93,10 +93,10 @@
         
         #game-board {
             position: relative;
-            width: 90vmin;
-            height: 90vmin;
-            max-width: 500px;
-            max-height: 500px;
+            width: 85vmin;
+            height: 85vmin;
+            max-width: 450px;
+            max-height: 450px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);
@@ -215,8 +215,10 @@
             }
             
             #game-board {
-                width: 95vmin;
-                height: 95vmin;
+                width: 80vmin;
+                height: 80vmin;
+                max-width: 350px;
+                max-height: 350px;
             }
             
             .win-content {
@@ -239,6 +241,13 @@
             
             .controls {
                 margin: 10px 0;
+            }
+            
+            #game-board {
+                width: 75vmin;
+                height: 75vmin;
+                max-width: 300px;
+                max-height: 300px;
             }
         }
     </style>
@@ -322,12 +331,12 @@
                 const boardWidth = gameBoard.offsetWidth;
                 const boardHeight = gameBoard.offsetHeight;
                 
-                // Рассчитываем размер шестиугольника так, чтобы сетка поместилась
-                // Используем правильные коэффициенты для гексагональной сетки
-                const hexWidth = boardWidth / (config.cols + 0.5);
-                const hexHeight = boardHeight / (config.rows * 0.75);
+                // Уменьшаем базовый размер шестиугольника для лучшего размещения
+                const hexWidth = boardWidth / (config.cols * 1.8);
+                const hexHeight = boardHeight / (config.rows * 1.8);
                 
-                config.hexSize = Math.min(hexWidth, hexHeight) * 0.9;
+                // Берем минимальный размер с дополнительным запасом
+                config.hexSize = Math.min(hexWidth, hexHeight) * 0.8;
                 
                 // Перерисовываем доску, если она уже создана
                 if (gameState.hexElements.length > 0) {
@@ -388,7 +397,7 @@
                 const x = col * config.hexSize * 1.732 + offsetX;
                 const y = row * config.hexSize * 1.5;
                 
-                // Центрируем сетку на доске
+                // Центрируем сетку на доске с большим запасом
                 const boardWidth = gameBoard.offsetWidth;
                 const boardHeight = gameBoard.offsetHeight;
                 const gridWidth = config.cols * config.hexSize * 1.732 + config.hexSize * 0.866;
