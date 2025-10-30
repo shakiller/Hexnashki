@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шестигранные пятнашки</title>
+    <title>Шестигранные пятнашки - Отладка</title>
     <style>
         * {
             box-sizing: border-box;
@@ -115,15 +115,21 @@
             overflow: hidden;
             background-size: cover;
             background-position: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.3);
         }
         
         .hex:hover {
             transform: scale(1.05);
             z-index: 10;
+            background-color: rgba(0, 0, 0, 0.5);
         }
         
         .hex.empty {
-            background: rgba(255, 255, 255, 0.05) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
             cursor: default;
             border: 2px dashed rgba(255, 255, 255, 0.2);
         }
@@ -258,7 +264,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Шестигранные пятнашки</h1>
+        <h1>Шестигранные пятнашки - Отладка</h1>
         
         <div class="controls">
             <label class="file-upload-wrapper">
@@ -271,11 +277,11 @@
         
         <div class="game-area">
             <div id="game-board"></div>
-            <div class="status" id="status">Соберите изображение, перемещая шестиугольники</div>
+            <div class="status" id="status">Режим отладки: показаны номера ячеек</div>
         </div>
         
         <div class="instructions">
-            <p>Загрузите своё изображение или используйте стандартное. Кликайте на шестиугольники рядом с пустым местом, чтобы переместить их. Цель - собрать исходное изображение.</p>
+            <p>Отладочный режим: в каждой ячейке показан её индекс в сетке 5×5. Скрытые ячейки: 0, 4, 9, 19, 20, 24</p>
         </div>
     </div>
     
@@ -298,6 +304,9 @@
             
             // Скрываем указанные ячейки для получения шестигранника
             const hiddenCells = [0, 4, 9, 19, 20, 24];
+            
+            // Включаем отладочный режим
+            const debugMode = true;
             
             // Состояние игры
             const gameState = {
@@ -324,9 +333,6 @@
             function initGame() {
                 calculateHexSize();
                 createBoard();
-                if (!gameState.imageSrc) {
-                    loadDefaultImage();
-                }
                 updateStatus();
                 
                 // Обработчик изменения размера окна
@@ -348,9 +354,7 @@
                 // Перерисовываем доску, если она уже создана
                 if (gameState.hexElements.length > 0) {
                     positionAllHexes();
-                    if (gameState.imageSrc) {
-                        applyImageToHexes();
-                    }
+                    applyNumbersToHexes();
                 }
             }
             
@@ -387,6 +391,11 @@
                     hex.className = 'hex';
                     hex.dataset.index = i;
                     
+                    // Отображаем номер ячейки в отладочном режиме
+                    if (debugMode) {
+                        hex.textContent = i;
+                    }
+                    
                     // Скрываем указанные клетки
                     if (hiddenCells.includes(i)) {
                         hex.classList.add('hidden');
@@ -396,6 +405,9 @@
                     const visibleIndex = visibleCells.indexOf(i);
                     if (visibleIndex === gameState.emptyIndex) {
                         hex.classList.add('empty');
+                        if (debugMode) {
+                            hex.textContent = 'Пусто';
+                        }
                     }
                     
                     // Обработчик клика (только для видимых клеток)
@@ -408,6 +420,11 @@
                     
                     // Позиционируем шестиугольник
                     positionHex(hex, i);
+                }
+                
+                // Применяем номера к ячейкам
+                if (debugMode) {
+                    applyNumbersToHexes();
                 }
             }
             
@@ -460,171 +477,24 @@
                 });
             }
             
-            // Загрузка стандартного изображения
-            function loadDefaultImage() {
-                // Создаем стандартное изображение с градиентом
-                const canvas = document.createElement('canvas');
-                canvas.width = 800;
-                canvas.height = 800;
-                const ctx = canvas.getContext('2d');
+            // Применение номеров к шестиугольникам (для отладки)
+            function applyNumbersToHexes() {
+                const hexes = document.querySelectorAll('.hex:not(.hidden)');
                 
-                // Создаем градиент
-                const gradient = ctx.createLinearGradient(0, 0, 800, 800);
-                gradient.addColorStop(0, '#ff7e5f');
-                gradient.addColorStop(0.5, '#feb47b');
-                gradient.addColorStop(1, '#86a8e7');
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 800, 800);
-                
-                // Добавляем текст
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 60px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('Гексагональные', 400, 350);
-                ctx.fillText('пятнашки', 400, 430);
-                
-                // Добавляем узор для лучшей видимости частей
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 3;
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        ctx.beginPath();
-                        ctx.arc(100 + i * 100, 100 + j * 100, 20, 0, Math.PI * 2);
-                        ctx.stroke();
-                    }
-                }
-                
-                gameState.imageSrc = canvas.toDataURL();
-                applyImageToHexes();
-            }
-            
-            // Применение изображения к шестиугольникам - ИСПРАВЛЕННАЯ ВЕРСИЯ
-            function applyImageToHexes() {
-                const hexes = document.querySelectorAll('.hex:not(.empty):not(.hidden)');
-                
-                // Создаем изображение для получения данных
-                const img = new Image();
-                img.src = gameState.imageSrc;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
+                hexes.forEach(hex => {
+                    const index = parseInt(hex.dataset.index);
+                    hex.textContent = index;
                     
-                    // Создаем виртуальную сетку только для видимых ячеек
-                    const visibleGrid = createVisibleGrid();
+                    // Добавляем цвет для лучшей видимости
+                    const hue = (index * 30) % 360;
+                    hex.style.backgroundColor = `hsla(${hue}, 70%, 40%, 0.7)`;
                     
-                    // Для каждого шестиугольника вырезаем соответствующую часть изображения
-                    hexes.forEach(hex => {
-                        const index = parseInt(hex.dataset.index);
-                        const position = getVisiblePosition(index, visibleGrid);
-                        if (!position) return;
-                        
-                        const {visibleRow, visibleCol, row, col} = position;
-                        
-                        // Создаем canvas для части изображения
-                        const hexCanvas = document.createElement('canvas');
-                        const hexCtx = hexCanvas.getContext('2d');
-                        
-                        // Устанавливаем размеры
-                        const hexWidth = config.hexSize * 1.732;
-                        const hexHeight = config.hexSize * 2;
-                        hexCanvas.width = hexWidth;
-                        hexCanvas.height = hexHeight;
-                        
-                        // Создаем шестиугольный путь
-                        hexCtx.beginPath();
-                        const points = [
-                            {x: hexWidth/2, y: 0},
-                            {x: hexWidth, y: hexHeight/4},
-                            {x: hexWidth, y: 3*hexHeight/4},
-                            {x: hexWidth/2, y: hexHeight},
-                            {x: 0, y: 3*hexHeight/4},
-                            {x: 0, y: hexHeight/4}
-                        ];
-                        
-                        hexCtx.moveTo(points[0].x, points[0].y);
-                        for (let i = 1; i < points.length; i++) {
-                            hexCtx.lineTo(points[i].x, points[i].y);
-                        }
-                        hexCtx.closePath();
-                        hexCtx.clip();
-                        
-                        // Вычисляем позицию на исходном изображении
-                        const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
-                        const srcX = col * config.hexSize * 1.732 + offsetX;
-                        const srcY = row * config.hexSize * 1.5;
-                        
-                        // Масштабируем координаты для исходного изображения
-                        const scaleX = img.width / (config.cols * config.hexSize * 1.732 + config.hexSize * 0.866);
-                        const scaleY = img.height / (config.rows * config.hexSize * 1.5 + config.hexSize * 0.5);
-                        
-                        const scaledSrcX = srcX * scaleX;
-                        const scaledSrcY = srcY * scaleY;
-                        const scaledHexWidth = hexWidth * scaleX;
-                        const scaledHexHeight = hexHeight * scaleY;
-                        
-                        // Рисуем часть изображения
-                        hexCtx.drawImage(
-                            canvas, 
-                            scaledSrcX, scaledSrcY, 
-                            scaledHexWidth, scaledHexHeight,
-                            0, 0,
-                            hexWidth, hexHeight
-                        );
-                        
-                        // Устанавливаем как фон
-                        hex.style.backgroundImage = `url(${hexCanvas.toDataURL()})`;
-                    });
-                };
-            }
-            
-            // Создание виртуальной сетки только для видимых ячеек
-            function createVisibleGrid() {
-                const grid = [];
-                let visibleIndex = 0;
-                
-                for (let row = 0; row < config.rows; row++) {
-                    const gridRow = [];
-                    for (let col = 0; col < config.cols; col++) {
-                        const index = row * config.cols + col;
-                        if (!hiddenCells.includes(index)) {
-                            gridRow.push({
-                                index: index,
-                                visibleRow: Math.floor(visibleIndex / 5), // Примерная видимая строка
-                                visibleCol: visibleIndex % 5, // Примерный видимый столбец
-                                originalRow: row,
-                                originalCol: col
-                            });
-                            visibleIndex++;
-                        } else {
-                            gridRow.push(null);
-                        }
+                    // Для пустой ячейки особый стиль
+                    if (hex.classList.contains('empty')) {
+                        hex.textContent = 'Пусто';
+                        hex.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
                     }
-                    grid.push(gridRow);
-                }
-                return grid;
-            }
-            
-            // Получение позиции в видимой сетке
-            function getVisiblePosition(index, visibleGrid) {
-                for (let row = 0; row < config.rows; row++) {
-                    for (let col = 0; col < config.cols; col++) {
-                        const cell = visibleGrid[row][col];
-                        if (cell && cell.index === index) {
-                            return {
-                                visibleRow: cell.visibleRow,
-                                visibleCol: cell.visibleCol,
-                                row: cell.originalRow,
-                                col: cell.originalCol
-                            };
-                        }
-                    }
-                }
-                return null;
+                });
             }
             
             // Обработка клика по шестиугольнику
@@ -637,6 +507,11 @@
                     swapHexes(clickedIndex, gameState.emptyIndex);
                     gameState.moves++;
                     updateStatus();
+                    
+                    // Обновляем номера после перемещения
+                    if (debugMode) {
+                        applyNumbersToHexes();
+                    }
                     
                     // Проверяем, решена ли головоломка
                     if (checkSolution()) {
@@ -701,12 +576,28 @@
                 hex1.classList.toggle('empty');
                 hex2.classList.toggle('empty');
                 
-                // Меняем фоновые изображения
-                const bg1 = hex1.style.backgroundImage;
-                const bg2 = hex2.style.backgroundImage;
-                
-                hex1.style.backgroundImage = bg2;
-                hex2.style.backgroundImage = bg1;
+                // В отладочном режиме меняем текст
+                if (debugMode) {
+                    const tempText = hex1.textContent;
+                    hex1.textContent = hex2.textContent;
+                    hex2.textContent = tempText;
+                    
+                    // Обновляем цвета
+                    const hue1 = (index1 * 30) % 360;
+                    const hue2 = (index2 * 30) % 360;
+                    
+                    if (!hex1.classList.contains('empty')) {
+                        hex1.style.backgroundColor = `hsla(${hue1}, 70%, 40%, 0.7)`;
+                    } else {
+                        hex1.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
+                    }
+                    
+                    if (!hex2.classList.contains('empty')) {
+                        hex2.style.backgroundColor = `hsla(${hue2}, 70%, 40%, 0.7)`;
+                    } else {
+                        hex2.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
+                    }
+                }
             }
             
             // Проверка решения
@@ -760,6 +651,11 @@
                 }
                 
                 updateStatus();
+                
+                // Обновляем номера после перемешивания
+                if (debugMode) {
+                    applyNumbersToHexes();
+                }
             }
             
             // Сброс игры
@@ -767,7 +663,6 @@
                 gameState.isSolved = false;
                 gameState.moves = 0;
                 createBoard();
-                applyImageToHexes();
                 updateStatus();
             }
             
@@ -780,7 +675,11 @@
                         const reader = new FileReader();
                         reader.onload = function(event) {
                             gameState.imageSrc = event.target.result;
-                            resetGame();
+                            // Если загружаем изображение, переключаемся из отладочного режима
+                            if (debugMode) {
+                                // Здесь можно добавить логику для переключения на изображения
+                                alert("В режиме отладки изображения не загружаются. Отключите debugMode в коде.");
+                            }
                         };
                         reader.readAsDataURL(file);
                     }
