@@ -310,13 +310,14 @@
             
             // Состояние игры
             const gameState = {
-                board: [],
-                emptyIndex: -1,
+                board: [], // Состояние видимых ячеек
+                emptyIndex: -1, // Индекс пустой ячейки в массиве board
                 isSolved: false,
                 moves: 0,
                 imageSrc: null,
                 hexElements: [],
-                originalPositions: [] // Сохраняем исходные позиции для проверки решения
+                originalPositions: [], // Сохраняем исходные позиции для проверки решения
+                visibleCells: [] // Массив видимых ячеек (их глобальные индексы)
             };
             
             // Элементы DOM
@@ -364,26 +365,25 @@
                 gameState.board = [];
                 gameState.hexElements = [];
                 gameState.originalPositions = [];
+                gameState.visibleCells = [];
                 
-                // Создаем массив индексов
+                // Создаем массив видимых ячеек
                 const totalHexes = config.rows * config.cols;
-                
-                // Находим индексы видимых клеток
-                const visibleCells = [];
                 for (let i = 0; i < totalHexes; i++) {
                     if (!hiddenCells.includes(i)) {
-                        visibleCells.push(i);
+                        gameState.visibleCells.push(i);
                     }
                 }
                 
                 // Создаем игровое поле только из видимых клеток
-                for (let i = 0; i < visibleCells.length - 1; i++) {
+                const totalVisible = gameState.visibleCells.length;
+                for (let i = 0; i < totalVisible - 1; i++) {
                     gameState.board.push(i);
                     gameState.originalPositions.push(i);
                 }
                 gameState.board.push(-1); // Пустая ячейка
                 gameState.originalPositions.push(-1);
-                gameState.emptyIndex = visibleCells.length - 1;
+                gameState.emptyIndex = totalVisible - 1;
                 
                 // Создаем DOM-элементы для всех клеток (25)
                 for (let i = 0; i < totalHexes; i++) {
@@ -402,7 +402,7 @@
                     }
                     
                     // Помечаем пустую клетку
-                    const visibleIndex = visibleCells.indexOf(i);
+                    const visibleIndex = gameState.visibleCells.indexOf(i);
                     if (visibleIndex === gameState.emptyIndex) {
                         hex.classList.add('empty');
                         if (debugMode) {
@@ -482,29 +482,34 @@
                 const hexes = document.querySelectorAll('.hex:not(.hidden)');
                 
                 hexes.forEach(hex => {
-                    const index = parseInt(hex.dataset.index);
-                    hex.textContent = index;
+                    const globalIndex = parseInt(hex.dataset.index);
+                    const boardIndex = gameState.visibleCells.indexOf(globalIndex);
+                    const value = gameState.board[boardIndex];
+                    
+                    hex.textContent = value !== -1 ? value : 'Пусто';
                     
                     // Добавляем цвет для лучшей видимости
-                    const hue = (index * 30) % 360;
-                    hex.style.backgroundColor = `hsla(${hue}, 70%, 40%, 0.7)`;
-                    
-                    // Для пустой ячейки особый стиль
-                    if (hex.classList.contains('empty')) {
-                        hex.textContent = 'Пусто';
+                    const hue = (value * 30) % 360;
+                    if (value !== -1) {
+                        hex.style.backgroundColor = `hsla(${hue}, 70%, 40%, 0.7)`;
+                    } else {
                         hex.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
                     }
                 });
             }
             
             // Обработка клика по шестиугольнику
-            function handleHexClick(clickedIndex) {
-                if (gameState.isSolved || hiddenCells.includes(clickedIndex)) return;
+            function handleHexClick(clickedGlobalIndex) {
+                if (gameState.isSolved || hiddenCells.includes(clickedGlobalIndex)) return;
+                
+                // Находим индексы в массиве состояний
+                const clickedBoardIndex = gameState.visibleCells.indexOf(clickedGlobalIndex);
+                const emptyBoardIndex = gameState.emptyIndex;
                 
                 // Проверяем, является ли шестиугольник соседним с пустым
-                if (isAdjacent(clickedIndex, gameState.emptyIndex)) {
+                if (isAdjacent(clickedGlobalIndex, gameState.visibleCells[emptyBoardIndex])) {
                     // Меняем местами
-                    swapHexes(clickedIndex, gameState.emptyIndex);
+                    swapHexes(clickedBoardIndex, emptyBoardIndex);
                     gameState.moves++;
                     updateStatus();
                     
@@ -522,11 +527,11 @@
             }
             
             // ПРОВЕРКА СОСЕДСТВА - ИСПРАВЛЕННАЯ ВЕРСИЯ
-            function isAdjacent(index1, index2) {
-                const row1 = Math.floor(index1 / config.cols);
-                const col1 = index1 % config.cols;
-                const row2 = Math.floor(index2 / config.cols);
-                const col2 = index2 % config.cols;
+            function isAdjacent(globalIndex1, globalIndex2) {
+                const row1 = Math.floor(globalIndex1 / config.cols);
+                const col1 = globalIndex1 % config.cols;
+                const row2 = Math.floor(globalIndex2 / config.cols);
+                const col2 = globalIndex2 % config.cols;
                 
                 const rowDiff = Math.abs(row1 - row2);
                 const colDiff = Math.abs(col1 - col2);
@@ -557,47 +562,27 @@
             }
             
             // Обмен шестиугольниками
-            function swapHexes(index1, index2) {
+            function swapHexes(boardIndex1, boardIndex2) {
                 // Обновляем состояние игры
-                [gameState.board[index1], gameState.board[index2]] = [gameState.board[index2], gameState.board[index1]];
+                [gameState.board[boardIndex1], gameState.board[boardIndex2]] = [gameState.board[boardIndex2], gameState.board[boardIndex1]];
                 
                 // Обновляем пустой индекс
-                if (gameState.board[index1] === -1) {
-                    gameState.emptyIndex = index1;
+                if (gameState.board[boardIndex1] === -1) {
+                    gameState.emptyIndex = boardIndex1;
                 } else {
-                    gameState.emptyIndex = index2;
+                    gameState.emptyIndex = boardIndex2;
                 }
                 
                 // Обновляем DOM
-                const hex1 = gameState.hexElements[index1];
-                const hex2 = gameState.hexElements[index2];
+                const globalIndex1 = gameState.visibleCells[boardIndex1];
+                const globalIndex2 = gameState.visibleCells[boardIndex2];
+                
+                const hex1 = gameState.hexElements[globalIndex1];
+                const hex2 = gameState.hexElements[globalIndex2];
                 
                 // Меняем классы empty
                 hex1.classList.toggle('empty');
                 hex2.classList.toggle('empty');
-                
-                // В отладочном режиме меняем текст
-                if (debugMode) {
-                    const tempText = hex1.textContent;
-                    hex1.textContent = hex2.textContent;
-                    hex2.textContent = tempText;
-                    
-                    // Обновляем цвета
-                    const hue1 = (index1 * 30) % 360;
-                    const hue2 = (index2 * 30) % 360;
-                    
-                    if (!hex1.classList.contains('empty')) {
-                        hex1.style.backgroundColor = `hsla(${hue1}, 70%, 40%, 0.7)`;
-                    } else {
-                        hex1.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
-                    }
-                    
-                    if (!hex2.classList.contains('empty')) {
-                        hex2.style.backgroundColor = `hsla(${hue2}, 70%, 40%, 0.7)`;
-                    } else {
-                        hex2.style.backgroundColor = `rgba(255, 255, 255, 0.1)`;
-                    }
-                }
             }
             
             // Проверка решения
@@ -631,14 +616,18 @@
                 
                 // Простой алгоритм перемешивания - делаем много случайных ходов
                 const shuffleMoves = 200;
-                let emptyIndex = gameState.emptyIndex;
+                let emptyBoardIndex = gameState.emptyIndex;
                 
                 for (let i = 0; i < shuffleMoves; i++) {
                     // Находим всех соседей пустой ячейки
                     const neighbors = [];
                     for (let j = 0; j < gameState.board.length; j++) {
-                        if (j !== emptyIndex && !hiddenCells.includes(j) && isAdjacent(j, emptyIndex)) {
-                            neighbors.push(j);
+                        if (j !== emptyBoardIndex) {
+                            const globalIndexJ = gameState.visibleCells[j];
+                            const globalEmptyIndex = gameState.visibleCells[emptyBoardIndex];
+                            if (isAdjacent(globalIndexJ, globalEmptyIndex)) {
+                                neighbors.push(j);
+                            }
                         }
                     }
                     
@@ -646,8 +635,8 @@
                     const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
                     
                     // Меняем местами
-                    swapHexes(randomNeighbor, emptyIndex);
-                    emptyIndex = randomNeighbor;
+                    swapHexes(randomNeighbor, emptyBoardIndex);
+                    emptyBoardIndex = randomNeighbor;
                 }
                 
                 updateStatus();
@@ -677,7 +666,6 @@
                             gameState.imageSrc = event.target.result;
                             // Если загружаем изображение, переключаемся из отладочного режима
                             if (debugMode) {
-                                // Здесь можно добавить логику для переключения на изображения
                                 alert("В режиме отладки изображения не загружаются. Отключите debugMode в коде.");
                             }
                         };
