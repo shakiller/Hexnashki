@@ -500,10 +500,9 @@
                 applyImageToHexes();
             }
             
-            // Применение изображения к шестиугольникам
+            // Применение изображения к шестиугольникам - ИСПРАВЛЕННАЯ ВЕРСИЯ
             function applyImageToHexes() {
                 const hexes = document.querySelectorAll('.hex:not(.empty):not(.hidden)');
-                const totalHexes = config.rows * config.cols;
                 
                 // Создаем изображение для получения данных
                 const img = new Image();
@@ -515,11 +514,16 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0);
                     
+                    // Создаем виртуальную сетку только для видимых ячеек
+                    const visibleGrid = createVisibleGrid();
+                    
                     // Для каждого шестиугольника вырезаем соответствующую часть изображения
                     hexes.forEach(hex => {
                         const index = parseInt(hex.dataset.index);
-                        const row = Math.floor(index / config.cols);
-                        const col = index % config.cols;
+                        const position = getVisiblePosition(index, visibleGrid);
+                        if (!position) return;
+                        
+                        const {visibleRow, visibleCol, row, col} = position;
                         
                         // Создаем canvas для части изображения
                         const hexCanvas = document.createElement('canvas');
@@ -576,6 +580,51 @@
                         hex.style.backgroundImage = `url(${hexCanvas.toDataURL()})`;
                     });
                 };
+            }
+            
+            // Создание виртуальной сетки только для видимых ячеек
+            function createVisibleGrid() {
+                const grid = [];
+                let visibleIndex = 0;
+                
+                for (let row = 0; row < config.rows; row++) {
+                    const gridRow = [];
+                    for (let col = 0; col < config.cols; col++) {
+                        const index = row * config.cols + col;
+                        if (!hiddenCells.includes(index)) {
+                            gridRow.push({
+                                index: index,
+                                visibleRow: Math.floor(visibleIndex / 5), // Примерная видимая строка
+                                visibleCol: visibleIndex % 5, // Примерный видимый столбец
+                                originalRow: row,
+                                originalCol: col
+                            });
+                            visibleIndex++;
+                        } else {
+                            gridRow.push(null);
+                        }
+                    }
+                    grid.push(gridRow);
+                }
+                return grid;
+            }
+            
+            // Получение позиции в видимой сетке
+            function getVisiblePosition(index, visibleGrid) {
+                for (let row = 0; row < config.rows; row++) {
+                    for (let col = 0; col < config.cols; col++) {
+                        const cell = visibleGrid[row][col];
+                        if (cell && cell.index === index) {
+                            return {
+                                visibleRow: cell.visibleRow,
+                                visibleCol: cell.visibleCol,
+                                row: cell.originalRow,
+                                col: cell.originalCol
+                            };
+                        }
+                    }
+                }
+                return null;
             }
             
             // Обработка клика по шестиугольнику
