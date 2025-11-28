@@ -83,6 +83,30 @@
             position: relative;
             overflow: hidden;
         }
+
+        .file-upload-wrapper.icon-button {
+            width: 54px;
+            height: 54px;
+            padding: 0;
+        }
+
+        .file-upload-wrapper svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
         
         .game-area {
             display: flex;
@@ -113,6 +137,7 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            background-repeat: no-repeat;
             background-size: cover;
             background-position: center;
         }
@@ -261,10 +286,16 @@
         <h1>Шестигранные пятнашки</h1>
         
         <div class="controls">
-            <label class="file-upload-wrapper">
-                <span>Выбрать изображение</span>
+            <label class="file-upload-wrapper icon-button" title="Загрузить своё изображение">
+                <span class="sr-only">Загрузить своё изображение</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" role="img">
+                    <path d="M4 5a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7a2 2 0 0 0-2-2H4zm16 2v5.59l-3.3-3.3a1 1 0 0 0-1.4 0L11 14l-2.3-2.3a1 1 0 0 0-1.4 0L4 15V7h16zm0 12H4v-.59l3.3-3.3 2.3 2.29a1 1 0 0 0 1.4 0l4.3-4.29L20 16.59V19z"/>
+                    <path d="M12 3l3 3h-2v4h-2V6H9l3-3z"/>
+                    <circle cx="8.5" cy="9" r="1.2"/>
+                </svg>
                 <input type="file" id="image-upload" accept="image/*">
             </label>
+            <button id="change-image-btn">Сменить картинку</button>
             <button id="shuffle-btn">Перемешать</button>
             <button id="reset-btn">Сбросить</button>
         </div>
@@ -275,7 +306,7 @@
         </div>
         
         <div class="instructions">
-            <p>Загрузите своё изображение или используйте стандартное. Кликайте на шестиугольники рядом с пустым местом, чтобы переместить их. Цель - собрать исходное изображение.</p>
+            <p>Нажмите «Сменить картинку», чтобы случайно выбрать иллюстрацию из галереи, или загрузите свою по иконке фото. Кликайте на шестиугольники рядом с пустым местом, чтобы перемещать их и собрать исходное изображение.</p>
         </div>
     </div>
     
@@ -288,7 +319,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             // Конфигурация игры - сетка 5x5
             const config = {
                 rows: 5,
@@ -298,6 +329,23 @@
             
             // Скрываем указанные ячейки для получения шестигранника
             const hiddenCells = [0, 4, 9, 19, 20, 24];
+
+            // Предустановленные изображения из папки image
+            const fallbackImages = [
+                'image/1.png',
+                'image/2.png',
+                'image/3.png',
+                'image/4.png',
+                'image/5.png',
+                'image/6.png',
+                'image/7.png',
+                'image/8.png',
+                'image/9.png',
+                'image/10.png',
+                'image/11.png'
+            ];
+            let predefinedImages = [...fallbackImages];
+            const imageManifestPath = 'image/images.json';
             
             // Отладочный режим отключен
             const debugMode = false;
@@ -313,24 +361,84 @@
                 originalPositions: [], // Сохраняем исходные позиции для проверки решения
                 visibleCells: [] // Массив видимых ячеек (их глобальные индексы)
             };
+
+            // Возвращает случайный путь к изображению из набора
+            function pickRandomImage(excludeCurrent = false) {
+                if (!predefinedImages.length) {
+                    return null;
+                }
+                let pool = [...predefinedImages];
+                if (excludeCurrent && gameState.imageSrc && pool.length > 1) {
+                    pool = pool.filter(src => src !== gameState.imageSrc);
+                    if (!pool.length) {
+                        pool = [...predefinedImages];
+                    }
+                }
+                const randomIndex = Math.floor(Math.random() * pool.length);
+                return pool[randomIndex];
+            }
+
+            async function loadPredefinedImages() {
+                try {
+                    const response = await fetch(`${imageManifestPath}?cacheBust=${Date.now()}`, { cache: 'no-cache' });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const manifest = await response.json();
+                    const manifestList = Array.isArray(manifest) ? manifest : manifest?.images;
+                    if (Array.isArray(manifestList) && manifestList.length) {
+                        predefinedImages = manifestList.map(item => item.startsWith('image/') ? item : `image/${item}`);
+                        return;
+                    }
+                    console.warn('Файл image/images.json не содержит валидного массива изображений.');
+                } catch (error) {
+                    console.warn('Не удалось загрузить список изображений из image/images.json', error);
+                }
+                predefinedImages = [...fallbackImages];
+            }
+
+            function syncChangeImageButtonState() {
+                if (!changeImageBtn) {
+                    return;
+                }
+                const hasImages = predefinedImages.length > 0;
+                changeImageBtn.disabled = !hasImages;
+                changeImageBtn.title = hasImages
+                    ? 'Сменить картинку'
+                    : 'Добавьте изображения в папку image для переключения';
+            }
             
             // Элементы DOM
             const gameBoard = document.getElementById('game-board');
             const imageUpload = document.getElementById('image-upload');
             const shuffleBtn = document.getElementById('shuffle-btn');
             const resetBtn = document.getElementById('reset-btn');
+            const changeImageBtn = document.getElementById('change-image-btn');
             const statusEl = document.getElementById('status');
             const winMessage = document.getElementById('win-message');
             const winText = document.getElementById('win-text');
             const closeWinBtn = document.getElementById('close-win');
+
+            if (changeImageBtn) {
+                changeImageBtn.disabled = true;
+            }
+
+            await loadPredefinedImages();
+            syncChangeImageButtonState();
             
             // Инициализация игры
             function initGame() {
                 calculateHexSize();
                 createBoard();
                 if (!gameState.imageSrc) {
-                    loadDefaultImage();
+                    const randomImage = pickRandomImage();
+                    if (randomImage) {
+                        gameState.imageSrc = randomImage;
+                    } else {
+                        gameState.imageSrc = generateFallbackImage();
+                    }
                 }
+                applyImageToHexes();
                 updateStatus();
                 
                 // Обработчик изменения размера окна
@@ -463,8 +571,8 @@
                 });
             }
             
-            // Загрузка стандартного изображения
-            function loadDefaultImage() {
+            // Генерация стандартного изображения на случай отсутствия файлов
+            function generateFallbackImage() {
                 // Создаем стандартное изображение с градиентом
                 const canvas = document.createElement('canvas');
                 canvas.width = 800;
@@ -498,86 +606,48 @@
                         ctx.stroke();
                     }
                 }
-                
-                gameState.imageSrc = canvas.toDataURL();
-                applyImageToHexes();
+
+                return canvas.toDataURL();
             }
             
-            // Применение изображения к шестиугольникам
+            // Применение изображения к шестиугольникам без использования canvas
             function applyImageToHexes() {
-                const hexes = document.querySelectorAll('.hex:not(.empty):not(.hidden)');
-                
-                // Создаем изображение для получения данных
-                const img = new Image();
-                img.src = gameState.imageSrc;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // Для каждого шестиугольника вырезаем соответствующую часть изображения
-                    hexes.forEach(hex => {
-                        const index = parseInt(hex.dataset.index);
-                        const row = Math.floor(index / config.cols);
-                        const col = index % config.cols;
-                        
-                        // Создаем canvas для части изображения
-                        const hexCanvas = document.createElement('canvas');
-                        const hexCtx = hexCanvas.getContext('2d');
-                        
-                        // Устанавливаем размеры
-                        const hexWidth = config.hexSize * 1.732;
-                        const hexHeight = config.hexSize * 2;
-                        hexCanvas.width = hexWidth;
-                        hexCanvas.height = hexHeight;
-                        
-                        // Создаем шестиугольный путь
-                        hexCtx.beginPath();
-                        const points = [
-                            {x: hexWidth/2, y: 0},
-                            {x: hexWidth, y: hexHeight/4},
-                            {x: hexWidth, y: 3*hexHeight/4},
-                            {x: hexWidth/2, y: hexHeight},
-                            {x: 0, y: 3*hexHeight/4},
-                            {x: 0, y: hexHeight/4}
-                        ];
-                        
-                        hexCtx.moveTo(points[0].x, points[0].y);
-                        for (let i = 1; i < points.length; i++) {
-                            hexCtx.lineTo(points[i].x, points[i].y);
-                        }
-                        hexCtx.closePath();
-                        hexCtx.clip();
-                        
-                        // Вычисляем позицию на исходном изображении
-                        const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
-                        const srcX = col * config.hexSize * 1.732 + offsetX;
-                        const srcY = row * config.hexSize * 1.5;
-                        
-                        // Масштабируем координаты для исходного изображения
-                        const scaleX = img.width / (config.cols * config.hexSize * 1.732 + config.hexSize * 0.866);
-                        const scaleY = img.height / (config.rows * config.hexSize * 1.5 + config.hexSize * 0.5);
-                        
-                        const scaledSrcX = srcX * scaleX;
-                        const scaledSrcY = srcY * scaleY;
-                        const scaledHexWidth = hexWidth * scaleX;
-                        const scaledHexHeight = hexHeight * scaleY;
-                        
-                        // Рисуем часть изображения
-                        hexCtx.drawImage(
-                            canvas, 
-                            scaledSrcX, scaledSrcY, 
-                            scaledHexWidth, scaledHexHeight,
-                            0, 0,
-                            hexWidth, hexHeight
-                        );
-                        
-                        // Устанавливаем как фон
-                        hex.style.backgroundImage = `url(${hexCanvas.toDataURL()})`;
-                    });
-                };
+                if (!gameState.imageSrc) {
+                    return;
+                }
+
+                const gridWidth = config.cols * config.hexSize * 1.732 + config.hexSize * 0.866;
+                const gridHeight = config.rows * config.hexSize * 1.5 + config.hexSize * 0.5;
+
+                gameState.visibleCells.forEach(globalIndex => {
+                    const hex = gameState.hexElements[globalIndex];
+                    if (!hex) {
+                        return;
+                    }
+
+                    if (hex.classList.contains('hidden')) {
+                        hex.style.backgroundImage = 'none';
+                        return;
+                    }
+
+                    if (hex.classList.contains('empty')) {
+                        hex.style.backgroundImage = 'none';
+                        hex.style.backgroundPosition = '';
+                        hex.style.backgroundSize = '';
+                        return;
+                    }
+
+                    const row = Math.floor(globalIndex / config.cols);
+                    const col = globalIndex % config.cols;
+                    const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
+                    const x = col * config.hexSize * 1.732 + offsetX;
+                    const y = row * config.hexSize * 1.5;
+
+                    hex.style.backgroundImage = `url(${gameState.imageSrc})`;
+                    hex.style.backgroundSize = `${gridWidth}px ${gridHeight}px`;
+                    hex.style.backgroundPosition = `-${x}px -${y}px`;
+                    hex.style.backgroundRepeat = 'no-repeat';
+                });
             }
             
             // Обработка клика по шестиугольнику
@@ -661,12 +731,25 @@
                 hex1.classList.toggle('empty');
                 hex2.classList.toggle('empty');
                 
-                // Меняем фоновые изображения
-                const bg1 = hex1.style.backgroundImage;
-                const bg2 = hex2.style.backgroundImage;
+                // Меняем фоновые изображения и их позиционирование
+                const bg1 = {
+                    image: hex1.style.backgroundImage,
+                    position: hex1.style.backgroundPosition,
+                    size: hex1.style.backgroundSize
+                };
+                const bg2 = {
+                    image: hex2.style.backgroundImage,
+                    position: hex2.style.backgroundPosition,
+                    size: hex2.style.backgroundSize
+                };
                 
-                hex1.style.backgroundImage = bg2;
-                hex2.style.backgroundImage = bg1;
+                hex1.style.backgroundImage = bg2.image;
+                hex1.style.backgroundPosition = bg2.position;
+                hex1.style.backgroundSize = bg2.size;
+                
+                hex2.style.backgroundImage = bg1.image;
+                hex2.style.backgroundPosition = bg1.position;
+                hex2.style.backgroundSize = bg1.size;
             }
             
             // Проверка решения
@@ -745,11 +828,20 @@
                         reader.onload = function(event) {
                             gameState.imageSrc = event.target.result;
                             resetGame();
+                            imageUpload.value = '';
                         };
                         reader.readAsDataURL(file);
                     }
                 });
                 
+                // Смена предустановленного изображения
+                changeImageBtn?.addEventListener('click', function() {
+                    const nextImage = pickRandomImage(true) || generateFallbackImage();
+                    gameState.imageSrc = nextImage;
+                    resetGame();
+                    imageUpload.value = '';
+                });
+
                 // Обработчики кнопок
                 shuffleBtn.addEventListener('click', shufflePuzzle);
                 resetBtn.addEventListener('click', resetGame);
