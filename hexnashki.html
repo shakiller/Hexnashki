@@ -47,6 +47,40 @@
             justify-content: center;
             width: 100%;
         }
+
+        .range-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 14px;
+            min-width: 260px;
+        }
+
+        .range-control.is-hidden {
+            display: none !important;
+        }
+
+        .range-control label {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .range-control input[type="range"] {
+            flex: 1;
+            accent-color: #ffdd57;
+        }
+
+        .range-control span {
+            width: 60px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
         
         button, .file-upload-wrapper {
             padding: 12px 20px;
@@ -238,7 +272,7 @@
                 align-items: center;
             }
             
-            button, .file-upload-wrapper {
+            button, .file-upload-wrapper, .range-control {
                 width: 100%;
                 max-width: 300px;
             }
@@ -295,6 +329,11 @@
                 </svg>
                 <input type="file" id="image-upload" accept="image/*">
             </label>
+            <div class="range-control is-hidden">
+                <label for="image-offset">Сдвиг X</label>
+                <input type="range" id="image-offset" min="-200" max="200" value="-17" step="1">
+                <span id="image-offset-value">-17 px</span>
+            </div>
             <button id="change-image-btn">Сменить картинку</button>
             <button id="shuffle-btn">Перемешать</button>
             <button id="reset-btn">Сбросить</button>
@@ -357,6 +396,8 @@
                 isSolved: false,
                 moves: 0,
                 imageSrc: null,
+                imageMeta: null,
+                imageOffsetX: -17,
                 hexElements: [],
                 originalPositions: [], // Сохраняем исходные позиции для проверки решения
                 visibleCells: [] // Массив видимых ячеек (их глобальные индексы)
@@ -407,6 +448,76 @@
                     ? 'Сменить картинку'
                     : 'Добавьте изображения в папку image для переключения';
             }
+
+            function updateOffsetDisplay() {
+                if (imageOffsetValue) {
+                    imageOffsetValue.textContent = `${gameState.imageOffsetX}px`;
+                }
+            }
+
+            function initOffsetControl() {
+                if (!imageOffsetSlider) {
+                    return;
+                }
+                imageOffsetSlider.value = String(gameState.imageOffsetX);
+                updateOffsetDisplay();
+                imageOffsetSlider.addEventListener('input', function(event) {
+                    const newValue = Number(event.target.value);
+                    if (!Number.isNaN(newValue)) {
+                        gameState.imageOffsetX = newValue;
+                        updateOffsetDisplay();
+                        applyImageToHexes();
+                    }
+                });
+            }
+
+            function loadImageMeta(src) {
+                return new Promise((resolve, reject) => {
+                    if (!src) {
+                        reject(new Error('Источник изображения не задан'));
+                        return;
+                    }
+                    const img = new Image();
+                    const cleanup = () => {
+                        img.onload = null;
+                        img.onerror = null;
+                    };
+                    img.onload = function() {
+                        cleanup();
+                        resolve({
+                            width: img.naturalWidth || img.width,
+                            height: img.naturalHeight || img.height
+                        });
+                    };
+                    img.onerror = function(error) {
+                        cleanup();
+                        reject(error);
+                    };
+                    img.src = src;
+                    if (img.complete && img.naturalWidth) {
+                        cleanup();
+                        resolve({
+                            width: img.naturalWidth,
+                            height: img.naturalHeight
+                        });
+                    }
+                });
+            }
+
+            async function setImageSource(newSrc) {
+                gameState.imageSrc = newSrc;
+                gameState.imageMeta = null;
+
+                if (!newSrc) {
+                    return;
+                }
+
+                try {
+                    gameState.imageMeta = await loadImageMeta(newSrc);
+                } catch (error) {
+                    console.warn('Не удалось получить размеры изображения', error);
+                }
+            }
             
             // Элементы DOM
             const gameBoard = document.getElementById('game-board');
@@ -418,6 +529,8 @@
             const winMessage = document.getElementById('win-message');
             const winText = document.getElementById('win-text');
             const closeWinBtn = document.getElementById('close-win');
+            const imageOffsetSlider = document.getElementById('image-offset');
+            const imageOffsetValue = document.getElementById('image-offset-value');
 
             if (changeImageBtn) {
                 changeImageBtn.disabled = true;
@@ -425,18 +538,15 @@
 
             await loadPredefinedImages();
             syncChangeImageButtonState();
+            initOffsetControl();
             
             // Инициализация игры
-            function initGame() {
+            async function initGame() {
                 calculateHexSize();
                 createBoard();
                 if (!gameState.imageSrc) {
-                    const randomImage = pickRandomImage();
-                    if (randomImage) {
-                        gameState.imageSrc = randomImage;
-                    } else {
-                        gameState.imageSrc = generateFallbackImage();
-                    }
+                    const randomImage = pickRandomImage() || generateFallbackImage();
+                    await setImageSource(randomImage);
                 }
                 applyImageToHexes();
                 updateStatus();
@@ -618,6 +728,22 @@
 
                 const gridWidth = config.cols * config.hexSize * 1.732 + config.hexSize * 0.866;
                 const gridHeight = config.rows * config.hexSize * 1.5 + config.hexSize * 0.5;
+                let displayWidth = gridWidth;
+                let displayHeight = gridHeight;
+                let offsetImageX = 0;
+                let offsetImageY = 0;
+
+                if (gameState.imageMeta?.width && gameState.imageMeta?.height) {
+                    const imgWidth = gameState.imageMeta.width;
+                    const imgHeight = gameState.imageMeta.height;
+                    if (imgWidth > 0 && imgHeight > 0) {
+                        const scale = Math.max(gridWidth / imgWidth, gridHeight / imgHeight);
+                        displayWidth = imgWidth * scale;
+                        displayHeight = imgHeight * scale;
+                        offsetImageX = (gridWidth - displayWidth) / 2;
+                        offsetImageY = (gridHeight - displayHeight) / 2;
+                    }
+                }
 
                 gameState.visibleCells.forEach(globalIndex => {
                     const hex = gameState.hexElements[globalIndex];
@@ -642,10 +768,12 @@
                     const offsetX = (row % 2 === 0) ? 0 : (config.hexSize * 0.866);
                     const x = col * config.hexSize * 1.732 + offsetX;
                     const y = row * config.hexSize * 1.5;
+                    const bgPosX = offsetImageX - x + (gameState.imageOffsetX || 0);
+                    const bgPosY = offsetImageY - y;
 
                     hex.style.backgroundImage = `url(${gameState.imageSrc})`;
-                    hex.style.backgroundSize = `${gridWidth}px ${gridHeight}px`;
-                    hex.style.backgroundPosition = `-${x}px -${y}px`;
+                    hex.style.backgroundSize = `${displayWidth}px ${displayHeight}px`;
+                    hex.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
                     hex.style.backgroundRepeat = 'no-repeat';
                 });
             }
@@ -825,8 +953,8 @@
                     const file = e.target.files[0];
                     if (file) {
                         const reader = new FileReader();
-                        reader.onload = function(event) {
-                            gameState.imageSrc = event.target.result;
+                        reader.onload = async function(event) {
+                            await setImageSource(event.target.result);
                             resetGame();
                             imageUpload.value = '';
                         };
@@ -835,9 +963,9 @@
                 });
                 
                 // Смена предустановленного изображения
-                changeImageBtn?.addEventListener('click', function() {
+                changeImageBtn?.addEventListener('click', async function() {
                     const nextImage = pickRandomImage(true) || generateFallbackImage();
-                    gameState.imageSrc = nextImage;
+                    await setImageSource(nextImage);
                     resetGame();
                     imageUpload.value = '';
                 });
@@ -852,7 +980,7 @@
             
             // Запуск игры
             initEventHandlers();
-            initGame();
+            await initGame();
         });
     </script>
 </body>
